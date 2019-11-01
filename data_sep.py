@@ -8,10 +8,11 @@ from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import randint as sp_randint
 from sklearn.model_selection import train_test_split
 from time import time
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 
-data = pd.read_csv("CompleteDataSet.csv", header=None, skiprows=2)
+data = pd.read_csv("CompleteDataSet.csv", header=None, skiprows=2).dropna(axis=0)
 # print(data.head())
+
 
 ankle_data = data.iloc[:, 1:7]
 
@@ -107,36 +108,52 @@ plt.show()
 sensors = {"Ankle": ankle_data, "Right Pocket": right_pocket_data, "Belt": belt_data, "Neck": neck_data,
            "Wrist": wrist_data}
 
-features = ["Accelerometer X", "Accelerometer Y", "Accelerometer Z", "Angular Velocity X", "Angular Velocity Y",
-            "Angular Velocity Z"]
+features = ["Acelerometro X", "Acelerometro Y", "Acelerometro Z", "Giroscopio X", "Giroscopio Y",
+            "Giroscopio Z"]
 
-sensors_features = list(np.array([["Ankle" + feature for feature in features],
-                    ["Right Pocket" + feature for feature in features],
-                    ["Belt" + feature for feature in features],
-                    ["Neck" + feature for feature in features],
-                    ["Wrist" + feature for feature in features]]).flat)
+sensors_features = list(np.array([["Ankle " + feature for feature in features],
+                                  ["Right Pocket " + feature for feature in features],
+                                  ["Belt " + feature for feature in features],
+                                  ["Neck " + feature for feature in features],
+                                  ["Wrist " + feature for feature in features]]).flat)
+
+atividades = ["Falling\nforward\nusing hands", "Falling\nforward\nusing knees", "Falling\nbackwards",
+              "Falling\nsideward",
+              "Falling sitting\nin empty chair", "Walking", "Standing", "Sitting", "Picking up\nan object", "Jumping",
+              "Laying"]
 
 total_data.columns = sensors_features
 
 corr = total_data.corr()
 
-plt.figure(figsize=(20, 15))
-plt.title("Total Data")
-sns.heatmap(corr, cmap="RdBu",
-            xticklabels=corr.columns.values, vmin=-1, vmax=1,
-            yticklabels=corr.columns.values, annot=True)
+plt.figure(dpi=300, figsize=(15, 10))
+plt.title("Matriz de correlação - Todos os sensores", fontdict={'fontsize': 18})
+sns.heatmap(corr.round(2), cmap="RdBu", xticklabels=sensors_features, yticklabels=sensors_features, vmin=-1, vmax=1,
+            linecolor="black", linewidths=0.5)
+# plt.xticks(rotation=45)
+# plt.yticks(rotation=45)
+# plt.savefig("img/tota_data.png", dpi=300, format="png")
 
 plt.show()
 
 for sensor in sensors:
     corr = sensors[sensor].corr()
 
-    # plt.figure(figsize=(10, 10))
-    plt.title(sensor, fontdict={'fontsize': 12})
-    sns.heatmap(corr, cmap="RdBu", vmin=-1, vmax=1,
-                xticklabels=features,
-                yticklabels=features, annot=True, square=True, robust=True)
-
+    plt.figure(dpi=300, figsize=(15, 10))
+    plt.title(sensor, fontdict={'fontsize': 18})
+    sns.heatmap(corr, cmap="RdBu", vmin=-1, vmax=1, xticklabels=features, yticklabels=features, annot=True, square=True)
+    plt.savefig("img/" + sensor + ".png", dpi=300)
     plt.show()
 
-total_data.coef
+plt.figure(dpi=300, figsize=(15, 10))
+
+sns.heatmap(cm_norm.round(3), xticklabels=atividades, yticklabels=atividades, cmap="RdBu", annot=True)
+plt.xticks(rotation=0)
+plt.show()
+print(classification_report(y_test, y_pred, target_names=[a.replace("\n", " ") for a in atividades]))
+
+clf_report = classification_report(y_test, y_pred, output_dict=True,
+                                   target_names=[a.replace("\n", " ") for a in atividades])
+
+clf_report = pd.DataFrame(data=clf_report).drop("support", axis=0).transpose()
+clf_report.to_csv("classification_report.csv")
